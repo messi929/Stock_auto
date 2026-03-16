@@ -259,13 +259,12 @@ def generate_report(data, report_type="post", analysis=None):
     html += '<div class="sbv-disclaimer">⚠️ 본 리포트는 투자 참고 자료이며, 투자 판단의 최종 책임은 투자자 본인에게 있습니다. | StockBizView</div>'
     html += '</div>'  # close sbv-wrap
 
-    # 제목 생성
-    title_tag = f"[{label} 리포트]"
+    # 제목 생성 (카테고리 태그 없이 AI 제목 + 날짜)
     if analysis.get("title"):
-        title = f"{title_tag} {analysis['title']} — {date_display}"
+        title = f"{analysis['title']} — {date_display}"
     else:
         kospi_chg = kospi.get("change_pct", 0)
-        title = f"{title_tag} KOSPI {kospi_chg:+.1f}% — {date_display}"
+        title = f"KOSPI {kospi_chg:+.1f}% — {date_display}"
 
     return title, html
 

@@ -76,7 +76,19 @@ def run(report_type="post_market", status="publish"):
     # Step 3: AI 분석 생성
     print("\n[3/5] AI 애널리스트 분석 생성 중...")
     summary = build_data_summary(data)
-    analysis = generate_analysis(summary, report_type)
+    try:
+        analysis = generate_analysis(summary, report_type)
+    except Exception as e:
+        print(f"  ⚠️ AI 분석 실패, 기본 분석으로 대체: {e}")
+        analysis = {
+            "title": "시장 리포트",
+            "headline": "",
+            "market_overview": [],
+            "sector_analysis": [],
+            "risk_factors": [],
+            "strategy": [],
+            "tomorrow_outlook": [],
+        }
     print(f"  제목: {analysis.get('title', 'N/A')}")
     print(f"  헤드라인: {analysis.get('headline', 'N/A')[:60]}...")
 

@@ -207,7 +207,15 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
 
     # SEO excerpt
     now = datetime.datetime.now()
-    excerpt = f"StockBizView {now.strftime('%Y.%m.%d')} {'장전' if 'pre' in report_type else '장후'} 시황 리포트. 주요 지수, 종목, 원자재 동향을 한눈에 확인하세요."
+    excerpt_map = {
+        "pre_market": "장전 브리핑 — 오늘 시장을 움직일 글로벌 시그널을 짚어드립니다.",
+        "post_market": "장후 리뷰 — 오늘 시장의 승자와 패자, 수급 흐름을 분석합니다.",
+        "us_market": "미국 시장 — 월가 핵심 동향과 한국 투자자 시사점을 정리합니다.",
+        "stock_analysis": "종목 분석 — 주목할 종목의 밸류에이션과 투자 전략을 제시합니다.",
+        "investment_strategy": "투자 전략 — 자산배분과 포트폴리오 포지셔닝을 안내합니다.",
+        "korea_market": "한국 시장 — KOSPI·KOSDAQ 심층 분석과 섹터별 전략을 제공합니다.",
+    }
+    excerpt = f"StockBizView {now.strftime('%Y.%m.%d')} {excerpt_map.get(report_type, '시황 리포트 — 주요 지수, 종목, 원자재 동향을 한눈에 확인하세요.')}"
 
     # 포스트 데이터
     post_data = {
@@ -243,21 +251,17 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
 
 if __name__ == "__main__":
     # 테스트: 리포트 생성 후 발행
-    report_type = sys.argv[1] if len(sys.argv) > 1 else "pre"
+    report_type = sys.argv[1] if len(sys.argv) > 1 else "pre_market"
     status = sys.argv[2] if len(sys.argv) > 2 else "draft"
 
-    from generate_report import generate_pre_market_report, generate_post_market_report, load_data
+    from generate_report import generate_report, load_data
 
+    layout_map = {"pre_market": "pre", "post_market": "post", "us_market": "pre",
+                  "stock_analysis": "post", "investment_strategy": "pre", "korea_market": "post"}
     data = load_data()
+    title, html = generate_report(data, layout_map.get(report_type, "post"))
 
-    if report_type == "post":
-        title, html = generate_post_market_report(data)
-        wp_type = "post_market"
-    else:
-        title, html = generate_pre_market_report(data)
-        wp_type = "pre_market"
-
-    result = publish_report(title, html, report_type=wp_type, status=status)
+    result = publish_report(title, html, report_type=report_type, status=status)
 
     if result:
         print(f"\n{'='*50}")

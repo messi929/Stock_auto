@@ -141,15 +141,34 @@ def generate_analysis(data_summary, report_type="post_market"):
     }
 
     body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(API_URL, data=body, method="POST")
-    req.add_header("x-api-key", API_KEY)
-    req.add_header("anthropic-version", "2023-06-01")
-    req.add_header("content-type", "application/json")
 
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        result = json.loads(resp.read().decode("utf-8"))
-
-    text = result["content"][0]["text"]
+    # 최대 2회 재시도 (타임아웃/일시 오류 대비)
+    text = None
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(API_URL, data=body, method="POST")
+            req.add_header("x-api-key", API_KEY)
+            req.add_header("anthropic-version", "2023-06-01")
+            req.add_header("content-type", "application/json")
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+            text = result["content"][0]["text"]
+            break
+        except Exception as e:
+            print(f"  ⚠️ API 호출 실패 (시도 {attempt+1}/3): {e}")
+            if attempt == 2:
+                print("  ❌ 3회 실패, 기본 분석 반환")
+                return {
+                    "title": "시장 리포트",
+                    "headline": "",
+                    "market_overview": [],
+                    "sector_analysis": [],
+                    "risk_factors": [],
+                    "strategy": [],
+                    "tomorrow_outlook": [],
+                }
+            import time
+            time.sleep(5)
 
     # JSON 파싱 (코드블록, 앞뒤 텍스트 제거)
     text = text.strip()
