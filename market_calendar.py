@@ -327,7 +327,7 @@ def build_calendar_html(events):
   <!-- 캘린더 헤더 -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #21262d;">
     <div>
-      <h1 style="font-size:24px;font-weight:700;color:#e6edf3;margin:0 0 4px 0;">Market Calendar</h1>
+      <h1 style="font-size:24px;font-weight:700;color:#e6edf3;margin:0 0 4px 0;">마켓 캘린더</h1>
       <p style="font-size:13px;color:#8b949e;margin:0;">경제지표 · 중앙은행 · 어닝 · 옵션만기 · 휴장일</p>
     </div>
     <div style="text-align:right;">
@@ -446,7 +446,7 @@ def update_calendar_page(html_content):
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("  StockBizView Market Calendar Update")
+    print("  StockBizView 마켓 캘린더 Update")
     print("=" * 60)
 
     test_mode = "--test" in sys.argv
