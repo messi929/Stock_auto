@@ -38,15 +38,8 @@ REPORT_TYPE_MAP = {
     "korea_market": "post",
 }
 
-# 제목 태그
-TITLE_TAG_MAP = {
-    "pre_market": "[장전 리포트]",
-    "post_market": "[장후 리포트]",
-    "us_market": "[미국 시장]",
-    "stock_analysis": "[종목 분석]",
-    "investment_strategy": "[투자 전략]",
-    "korea_market": "[한국 시장]",
-}
+# 제목에 카테고리 태그 불필요 (카테고리는 WordPress에서 자동 표시)
+# AI가 생성한 제목 + 날짜만 사용
 
 
 def run(report_type="post_market", status="publish"):
@@ -87,22 +80,17 @@ def run(report_type="post_market", status="publish"):
     print(f"  제목: {analysis.get('title', 'N/A')}")
     print(f"  헤드라인: {analysis.get('headline', 'N/A')[:60]}...")
 
-    # 제목 태그 오버라이드
-    tag = TITLE_TAG_MAP.get(report_type, "[리포트]")
+    # 제목: AI 제목 + 날짜 (카테고리 태그 없이)
     date_display = now.strftime("%Y.%m.%d")
-    if analysis.get("title"):
-        analysis["title"] = f"{analysis['title']}"
-        original_title = analysis["title"]
-    else:
-        original_title = f"시장 리포트 {date_display}"
+    original_title = analysis.get("title") or f"시장 리포트"
 
     # Step 4: HTML 리포트 생성
     print("\n[4/5] HTML 리포트 생성 중...")
     layout_type = REPORT_TYPE_MAP.get(report_type, "post")
     title, html = generate_report(data, layout_type, analysis)
 
-    # 제목 태그 교체
-    title = f"{tag} {original_title} — {date_display}"
+    # 최종 제목: AI 헤드라인 + 날짜
+    title = f"{original_title} — {date_display}"
     print(f"  최종 제목: {title}")
     print(f"  HTML 크기: {len(html):,} chars")
 
