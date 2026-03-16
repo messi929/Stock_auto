@@ -146,7 +146,7 @@ def generate_analysis(data_summary, report_type="post_market"):
     req.add_header("anthropic-version", "2023-06-01")
     req.add_header("content-type", "application/json")
 
-    with urllib.request.urlopen(req, timeout=90) as resp:
+    with urllib.request.urlopen(req, timeout=180) as resp:
         result = json.loads(resp.read().decode("utf-8"))
 
     text = result["content"][0]["text"]
