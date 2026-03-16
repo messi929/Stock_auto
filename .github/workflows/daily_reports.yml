@@ -1,0 +1,59 @@
+name: StockBizView Daily Reports
+
+on:
+  schedule:
+    # 모든 시간은 UTC (KST = UTC + 9)
+    # 장전 리포트: KST 07:57 = UTC 22:57 (전날)
+    - cron: '57 22 * * *'
+    # 장후 리포트: KST 19:03 = UTC 10:03
+    - cron: '3 10 * * *'
+  workflow_dispatch:
+    inputs:
+      report_type:
+        description: 'Report type'
+        required: true
+        default: 'post_market'
+        type: choice
+        options:
+          - pre_market
+          - post_market
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Determine report type
+        id: report
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ inputs.report_type }}" >> $GITHUB_OUTPUT
+          else
+            HOUR=$(TZ=Asia/Seoul date +%H)
+            if [ "$HOUR" -lt 12 ]; then
+              echo "type=pre_market" >> $GITHUB_OUTPUT
+            else
+              echo "type=post_market" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Run auto publisher
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          CLOUDWAYS_EMAIL: ${{ secrets.CLOUDWAYS_EMAIL }}
+          CLOUDWAYS_API_KEY: ${{ secrets.CLOUDWAYS_API_KEY }}
+          CLOUDWAYS_SERVER_ID: ${{ secrets.CLOUDWAYS_SERVER_ID }}
+          CLOUDWAYS_APP_ID: ${{ secrets.CLOUDWAYS_APP_ID }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: |
+          python auto_publish.py ${{ steps.report.outputs.type }} publish

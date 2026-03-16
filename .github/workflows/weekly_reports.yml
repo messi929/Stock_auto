@@ -1,0 +1,76 @@
+name: StockBizView Weekly Reports
+
+on:
+  schedule:
+    # 미국 시장 (화/금 KST 09:13 = UTC 00:13)
+    - cron: '13 0 * * 2,5'
+    # 종목 분석 (화/금 KST 19:47 = UTC 10:47)
+    - cron: '47 10 * * 2,5'
+    # 투자 전략 (수 KST 09:07 = UTC 00:07)
+    - cron: '7 0 * * 3'
+    # 한국 시장 (월/목 KST 19:33 = UTC 10:33)
+    - cron: '33 10 * * 1,4'
+  workflow_dispatch:
+    inputs:
+      report_type:
+        description: 'Report type'
+        required: true
+        default: 'korea_market'
+        type: choice
+        options:
+          - us_market
+          - stock_analysis
+          - investment_strategy
+          - korea_market
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Determine report type
+        id: report
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ inputs.report_type }}" >> $GITHUB_OUTPUT
+          else
+            HOUR=$(TZ=Asia/Seoul date +%H)
+            DOW=$(TZ=Asia/Seoul date +%u)
+            # 월=1,화=2,수=3,목=4,금=5
+            if [ "$HOUR" -lt 12 ]; then
+              # 오전: 미국시장(화/금) 또는 투자전략(수)
+              if [ "$DOW" = "3" ]; then
+                echo "type=investment_strategy" >> $GITHUB_OUTPUT
+              else
+                echo "type=us_market" >> $GITHUB_OUTPUT
+              fi
+            else
+              # 오후: 종목분석(화/금) 또는 한국시장(월/목)
+              if [ "$DOW" = "1" ] || [ "$DOW" = "4" ]; then
+                echo "type=korea_market" >> $GITHUB_OUTPUT
+              else
+                echo "type=stock_analysis" >> $GITHUB_OUTPUT
+              fi
+            fi
+          fi
+
+      - name: Run auto publisher
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          CLOUDWAYS_EMAIL: ${{ secrets.CLOUDWAYS_EMAIL }}
+          CLOUDWAYS_API_KEY: ${{ secrets.CLOUDWAYS_API_KEY }}
+          CLOUDWAYS_SERVER_ID: ${{ secrets.CLOUDWAYS_SERVER_ID }}
+          CLOUDWAYS_APP_ID: ${{ secrets.CLOUDWAYS_APP_ID }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: |
+          python auto_publish.py ${{ steps.report.outputs.type }} publish
