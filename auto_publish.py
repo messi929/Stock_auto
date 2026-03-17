@@ -17,6 +17,9 @@ import os
 import json
 import datetime
 
+# 한국 시간대 (KST = UTC+9)
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
 # 경로 설정
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else os.getcwd()
 sys.path.insert(0, SCRIPT_DIR)
@@ -42,13 +45,43 @@ REPORT_TYPE_MAP = {
 # AI가 생성한 제목 + 날짜만 사용
 
 
+def check_duplicate(report_type, date_str):
+    """오늘 같은 report_type이 이미 발행됐는지 확인"""
+    log_path = os.path.join(SCRIPT_DIR, "publish_log.jsonl")
+    if not os.path.exists(log_path):
+        return None
+    with open(log_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                if entry.get("report_type") == report_type and entry.get("timestamp", "").startswith(date_str):
+                    return entry
+            except json.JSONDecodeError:
+                continue
+    return None
+
+
 def run(report_type="post_market", status="publish"):
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(KST)
     print("=" * 60)
     print(f"  StockBizView Auto Publisher")
     print(f"  Report: {report_type}")
     print(f"  Time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
+
+    # 중복 발행 체크
+    today_str = now.strftime("%Y-%m-%d")
+    existing = check_duplicate(report_type, today_str)
+    if existing:
+        print(f"\n  ⚠️ 오늘({today_str}) '{report_type}' 리포트가 이미 발행되었습니다.")
+        print(f"  📌 Post ID: {existing.get('post_id')}")
+        print(f"  🔗 URL: {existing.get('url')}")
+        print(f"  ⏭️ 중복 발행을 건너뜁니다.")
+        print("=" * 60)
+        return None
 
     # Step 1: 데이터 수집
     print("\n[1/5] 시장 데이터 수집 중...")

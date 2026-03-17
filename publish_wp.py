@@ -12,6 +12,9 @@ import datetime
 import sys
 import io
 
+# 한국 시간대 (KST = UTC+9)
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
 # WordPress 설정
 WP_URL = os.environ.get("WP_URL", "https://stockbizview.com")
 WP_USER = os.environ.get("WP_USER", "messi929@naver.com")
@@ -164,7 +167,7 @@ def purge_cache(report_type=None):
             templates = json.loads(resp.read().decode("utf-8"))
 
         import datetime
-        ts = datetime.datetime.now().isoformat()
+        ts = datetime.datetime.now(KST).isoformat()
         for t in templates:
             if t["slug"] in ("archive", "home"):
                 content = t["content"]["raw"]
@@ -206,7 +209,7 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
     tag_ids = get_or_create_tags(tag_names)
 
     # SEO excerpt
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(KST)
     excerpt_map = {
         "pre_market": "장전 브리핑 — 오늘 시장을 움직일 글로벌 시그널을 짚어드립니다.",
         "post_market": "장후 리뷰 — 오늘 시장의 승자와 패자, 수급 흐름을 분석합니다.",
@@ -217,11 +220,14 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
     }
     excerpt = f"StockBizView {now.strftime('%Y.%m.%d')} {excerpt_map.get(report_type, '시황 리포트 — 주요 지수, 종목, 원자재 동향을 한눈에 확인하세요.')}"
 
-    # 포스트 데이터
+    # 포스트 데이터 (date: KST 표시용, date_gmt: UTC 실제 시간)
+    now_utc = now.astimezone(datetime.timezone.utc)
     post_data = {
         "title": title,
         "content": html_content,
         "status": status,
+        "date": now.strftime("%Y-%m-%dT%H:%M:%S"),
+        "date_gmt": now_utc.strftime("%Y-%m-%dT%H:%M:%S"),
         "categories": categories,
         "tags": tag_ids,
         "excerpt": excerpt,

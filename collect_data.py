@@ -13,6 +13,9 @@ import io
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
+# 한국 시간대 (KST = UTC+9)
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
 # === 심볼 정의 ===
 
 INDICES = {
@@ -109,7 +112,7 @@ def fetch_chart(symbol, range_str="5d", interval="1d"):
 
 def collect_all():
     """모든 시장 데이터를 수집하여 구조화된 딕셔너리 반환"""
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(KST)
     result = {
         "collected_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "date": now.strftime("%Y-%m-%d"),
@@ -167,7 +170,7 @@ def save_json(data, filename=None):
 if __name__ == "__main__":
     print("=" * 60)
     print("  StockBizView 시장 데이터 수집")
-    print(f"  {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  {datetime.datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S KST')}")
     print("=" * 60)
     print()
 

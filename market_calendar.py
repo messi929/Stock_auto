@@ -16,6 +16,9 @@ import datetime
 import sys
 import re
 
+# 한국 시간대 (KST = UTC+9)
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
 # ─── 설정 ───
 WP_URL = os.environ.get("WP_URL", "https://stockbizview.com")
 WP_USER = os.environ.get("WP_USER", "messi929@naver.com")
@@ -309,8 +312,8 @@ DAY_NAMES_KR = {
 
 def build_calendar_html(events):
     """마켓 캘린더 HTML 생성 (Nielsen UX 원칙 적용)"""
-    now = datetime.datetime.now()
-    today_str = datetime.date.today().isoformat()
+    now = datetime.datetime.now(KST)
+    today_str = now.strftime("%Y-%m-%d")
 
     override_css = (
         "<style>"
