@@ -90,6 +90,20 @@ CSS = """<style>
 .sbv-strategy-title{color:#58a6ff;font-size:16px;font-weight:700;margin-bottom:12px}
 .sbv-strategy p{color:#c9d1d9;line-height:1.7;margin:8px 0}
 .sbv-disclaimer{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px;margin-top:24px;font-size:11px;color:#8b949e;text-align:center}
+.sbv-executive{background:linear-gradient(135deg,#0d1117,#101820);border:1px solid #3fb950;border-radius:8px;padding:24px;margin-bottom:24px}
+.sbv-executive-title{color:#3fb950;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.sbv-executive-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.sbv-executive-num{background:#3fb950;color:#0d1117;font-size:12px;font-weight:800;width:22px;height:22px;min-width:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.sbv-executive-text{color:#e6edf3;font-size:14px;line-height:1.6;font-weight:500}
+.sbv-keynumber{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px}
+.sbv-keynumber-icon{font-size:20px;min-width:28px;text-align:center}
+.sbv-keynumber-text{color:#c9d1d9;font-size:13px;line-height:1.6}
+.sbv-tech{background:#0d1117;border:1px solid #8957e5;border-radius:8px;padding:24px;margin-bottom:24px}
+.sbv-tech-title{color:#d2a8ff;font-size:16px;font-weight:700;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #30363d}
+.sbv-money{background:#0d1117;border:1px solid #f0883e;border-radius:8px;padding:24px;margin-bottom:24px}
+.sbv-money-title{color:#f0883e;font-size:16px;font-weight:700;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #30363d}
+.sbv-outlook{background:linear-gradient(135deg,#0d1117,#0d1520);border:1px solid #58a6ff;border-radius:8px;padding:24px;margin-bottom:24px}
+.sbv-outlook-title{color:#58a6ff;font-size:16px;font-weight:700;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #30363d}
 </style>"""
 
 
@@ -201,6 +215,13 @@ def generate_report(data, report_type="post", analysis=None):
     html += metric_card("BTC", fmt_num(btc.get("price", 0), 0), btc.get("change_pct", 0), prefix="$")
     html += '</div>'
 
+    # 📌 Executive Summary (핵심 3줄 요약)
+    if analysis.get("executive_summary"):
+        html += '<div class="sbv-executive"><div class="sbv-executive-title">📌 핵심 요약</div>'
+        for i, point in enumerate(analysis["executive_summary"], 1):
+            html += f'<div class="sbv-executive-item"><div class="sbv-executive-num">{i}</div><div class="sbv-executive-text">{point}</div></div>'
+        html += '</div>'
+
     # 📰 시황 분석 (AI 내러티브)
     if analysis.get("market_overview"):
         html += analysis_section("📰 시황 분석", analysis["market_overview"])
@@ -229,6 +250,20 @@ def generate_report(data, report_type="post", analysis=None):
         html += bar_chart_row(s.get("name", ""), s.get("price", 0), s.get("change_pct", 0))
     html += '</div>'
 
+    # 📊 기술적 분석 (AI 내러티브)
+    if analysis.get("technical_levels"):
+        html += '<div class="sbv-tech"><div class="sbv-tech-title">📊 기술적 분석</div>'
+        for p in analysis["technical_levels"]:
+            html += f'<p style="color:#c9d1d9;line-height:1.8;margin:10px 0;font-size:14px">{p}</p>'
+        html += '</div>'
+
+    # 💰 자금 흐름 (AI 내러티브)
+    if analysis.get("money_flow"):
+        html += '<div class="sbv-money"><div class="sbv-money-title">💰 자금 흐름 · 수급 분석</div>'
+        for p in analysis["money_flow"]:
+            html += f'<p style="color:#c9d1d9;line-height:1.8;margin:10px 0;font-size:14px">{p}</p>'
+        html += '</div>'
+
     # 원자재/환율 테이블
     html += '<div class="sbv-section"><div class="sbv-section-title">💱 원자재 · 환율 · 금리</div>'
     html += '<table class="sbv-table"><thead><tr><th>항목</th><th>가격</th><th>등락</th></tr></thead><tbody>'
@@ -241,6 +276,15 @@ def generate_report(data, report_type="post", analysis=None):
         html += f'<tr><td>{name}</td><td>{prefix}{fmt_num(c.get("price", 0), 2)}{suffix}</td><td style="color:{color}">{arrow} {abs(c.get("change_pct", 0)):.2f}%</td></tr>'
     html += '</tbody></table></div>'
 
+    # 🔢 오늘의 핵심 숫자 (AI)
+    if analysis.get("key_numbers"):
+        icons = ["📈", "💹", "🔑", "⚡", "🎯"]
+        html += '<div class="sbv-section"><div class="sbv-section-title">🔢 오늘의 핵심 숫자</div>'
+        for i, num in enumerate(analysis["key_numbers"]):
+            icon = icons[i % len(icons)]
+            html += f'<div class="sbv-keynumber"><div class="sbv-keynumber-icon">{icon}</div><div class="sbv-keynumber-text">{num}</div></div>'
+        html += '</div>'
+
     # ⚠️ 리스크 요인 (AI 내러티브)
     if analysis.get("risk_factors"):
         html += analysis_section("⚠️ 리스크 요인", analysis["risk_factors"])
@@ -252,9 +296,13 @@ def generate_report(data, report_type="post", analysis=None):
             html += f'<p>{p}</p>'
         html += '</div>'
 
-    # 🔮 전망 (AI 내러티브)
+    # 🔮 전망 (AI 내러티브 - 강조 스타일)
     if analysis.get("tomorrow_outlook"):
-        html += analysis_section("🔮 " + ("오늘 장 전망" if is_pre else "내일 장 전망"), analysis["tomorrow_outlook"])
+        outlook_title = "오늘 장 전망" if is_pre else "내일 장 전망"
+        html += f'<div class="sbv-outlook"><div class="sbv-outlook-title">🔮 {outlook_title}</div>'
+        for p in analysis["tomorrow_outlook"]:
+            html += f'<p style="color:#c9d1d9;line-height:1.8;margin:10px 0;font-size:14px">{p}</p>'
+        html += '</div>'
 
     html += '<div class="sbv-disclaimer">⚠️ 본 리포트는 투자 참고 자료이며, 투자 판단의 최종 책임은 투자자 본인에게 있습니다. | StockBizView</div>'
     html += '</div>'  # close sbv-wrap
