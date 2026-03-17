@@ -220,14 +220,12 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
     }
     excerpt = f"StockBizView {now.strftime('%Y.%m.%d')} {excerpt_map.get(report_type, '시황 리포트 — 주요 지수, 종목, 원자재 동향을 한눈에 확인하세요.')}"
 
-    # 포스트 데이터 (date: KST 표시용, date_gmt: UTC 실제 시간)
-    now_utc = now.astimezone(datetime.timezone.utc)
+    # 포스트 데이터 (date: KST — WordPress timezone이 Asia/Seoul이므로 자동 변환)
     post_data = {
         "title": title,
         "content": html_content,
         "status": status,
         "date": now.strftime("%Y-%m-%dT%H:%M:%S"),
-        "date_gmt": now_utc.strftime("%Y-%m-%dT%H:%M:%S"),
         "categories": categories,
         "tags": tag_ids,
         "excerpt": excerpt,
