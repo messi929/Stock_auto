@@ -118,7 +118,8 @@ def check_today_published(report_type):
                 "date": posts[0]["date"],
             }
     except Exception as e:
-        print(f"  ⚠️ WordPress 중복 체크 실패 (계속 진행): {e}")
+        print(f"  ❌ WordPress 중복 체크 실패 — 안전을 위해 발행 차단: {e}")
+        return {"error": True, "reason": str(e)}
 
     return None
 

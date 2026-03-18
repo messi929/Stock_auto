@@ -1,0 +1,31 @@
+name: StockBizView Homepage Data Update
+
+on:
+  schedule:
+    # 30분 간격 (매시 0분, 30분)
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: homepage-update
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Update homepage data
+        env:
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+        run: |
+          python update_data.py

@@ -18,6 +18,10 @@ on:
           - pre_market
           - post_market
 
+concurrency:
+  group: daily-reports
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest

@@ -23,6 +23,10 @@ on:
           - investment_strategy
           - korea_market
 
+concurrency:
+  group: weekly-reports
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
