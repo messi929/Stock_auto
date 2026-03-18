@@ -31,12 +31,14 @@ Stock_auto/
 ├── publish_wp.py             # WordPress REST API 발행 + Breeze 캐시 퍼지
 ├── update_homepage.py        # 홈페이지 티커바/Market Pulse 실시간 업데이트
 ├── market_calendar.py        # 마켓 캘린더 (경제지표, 어닝, 옵션만기)
+├── update_data.py            # 홈페이지 데이터 갱신 (리포트 발행 없이 데이터만 업데이트)
 ├── latest_market_data.json   # 최근 수집 데이터 (자동 생성, .gitignore)
 ├── publish_log.jsonl         # (레거시, 미사용 — 중복 체크는 WordPress API로 수행)
 ├── .github/
 │   └── workflows/
 │       ├── daily_reports.yml     # 매일 장전/장후 리포트
-│       └── weekly_reports.yml    # 주간 리포트 4종
+│       ├── weekly_reports.yml    # 주간 리포트 4종
+│       └── update_homepage.yml  # 30분 간격 홈페이지 데이터 갱신
 └── README.md
 ```
 
@@ -89,6 +91,15 @@ python market_calendar.py --test          # 캘린더 데이터 확인 (발행 X
 
 GitHub 리포지토리에 push하면 cron 스케줄에 따라 자동 실행됩니다.
 수동 실행: Actions 탭 → 워크플로우 선택 → Run workflow
+
+**워크플로우 3종**:
+| 워크플로우 | 주기 | 용도 |
+|-----------|------|------|
+| `daily_reports.yml` | 1일 2회 | 장전/장후 리포트 발행 |
+| `weekly_reports.yml` | 주 4~5회 | 한국/미국/종목/전략 리포트 발행 |
+| `update_homepage.yml` | 30분 간격 | 홈페이지 시장 데이터 갱신 (리포트 없이) |
+
+모든 워크플로우에 **concurrency 그룹** 설정 — GitHub Actions cron 중복 트리거 방지
 
 ## 환경 변수 (Secrets)
 
@@ -167,7 +178,12 @@ Step 5/5: WordPress 발행 + 캐시 퍼지
 - WordPress FSE 템플릿 API로 home 템플릿 직접 수정
 - 티커바: KOSPI, KOSDAQ, S&P 500, NASDAQ, USD/KRW, BTC
 - Market Pulse: VIX, WTI, 금, US 10Y, 달러인덱스, 비트코인
-- 리포트 발행 시마다 자동 갱신
+- **30분 간격 자동 갱신** (GitHub Actions) + 리포트 발행 시 추가 갱신
+
+### 홈페이지 데이터 갱신 (`update_data.py`)
+- 리포트 발행 없이 데이터 수집 + 홈페이지 업데이트만 수행
+- 30분마다 GitHub Actions에서 자동 실행
+- 필요 Secrets: `WP_URL`, `WP_USER`, `WP_APP_PASSWORD`만 사용 (AI/Cloudways 불필요)
 
 ### 마켓 캘린더 (`market_calendar.py`)
 - **경제지표**: FOMC, CPI, NFP, PPI, GDP, ISM 등 (연간 확정 일정, 정적 JSON)
@@ -217,6 +233,8 @@ Step 5/5: WordPress 발행 + 캐시 퍼지
 | AI 응답 JSON 파싱 실패 | `{`~`}` 추출, 코드블록 제거 후 재시도, 최종 실패 시 **발행 차단** |
 | AI 분석 품질 미달 | 기본 제목("시장 리포트") 반환 시 **발행 차단** |
 | 같은 리포트 중복 발행 | WordPress API로 오늘 동일 카테고리 발행 여부 확인, 중복 시 스킵 |
+| 중복 체크 API 실패 | **발행 차단** (안전 우선 — 기존: 무시하고 발행 진행) |
+| GitHub Actions cron 중복 트리거 | concurrency 그룹으로 동시 실행 차단 |
 | 홈페이지 업데이트 실패 | 경고 출력 후 리포트 발행 계속 진행 |
 | 마켓 캘린더 업데이트 실패 | 경고 출력 후 리포트 발행 계속 진행 |
 | WordPress 발행 실패 | 에러 로그 출력, None 반환 |
@@ -235,6 +253,12 @@ Step 5/5: WordPress 발행 + 캐시 퍼지
 | GitHub Actions 401 Unauthorized | API 키 오등록 | Secrets에서 키 값 재확인 |
 
 ## 변경 이력
+
+- **2026-03-18**: 홈페이지 30분 자동 갱신 + 중복 발행 근본 수정
+  - 홈페이지 데이터 30분 간격 자동 갱신 워크플로우 추가 (`update_homepage.yml` + `update_data.py`)
+  - 중복 체크 API 실패 시 발행 차단 (기존: 예외 무시하고 발행 진행 → 중복 발행 원인)
+  - 모든 워크플로우에 concurrency 그룹 추가 (GitHub Actions cron 중복 트리거 방지)
+  - 잘못 발행된 포스트 삭제 (ID 306, AI 품질 미달 "시장 리포트")
 
 - **2026-03-18**: 중복 발행 방지 + AI 품질 게이트
   - 로컬 파일(publish_log.jsonl) 중복 체크 → WordPress API 기반으로 교체
