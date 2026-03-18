@@ -7,6 +7,8 @@ import json
 import os
 import urllib.request
 import base64
+import datetime
+import re
 
 WP_URL = os.environ.get("WP_URL", "https://stockbizview.com")
 WP_USER = os.environ.get("WP_USER", "messi929@naver.com")
@@ -81,13 +83,13 @@ def build_ticker_html(data):
         else:
             price_str = f"{price:,.0f}" if price > 1000 else f"{price:,.2f}"
 
-        rows.append(f"""  <div class="sbv-ticker-item">
+        rows.append(f"""  <div class="sbv-ticker-item" role="group" aria-label="{name} {price_str} {arrow}{abs(pct):.2f}%">
     <div class="sbv-ticker-name">{name}</div>
     <div class="sbv-ticker-price">{price_str}</div>
-    <div class="sbv-ticker-change {cls}">{arrow} {abs(pct):.2f}%</div>
+    <div class="sbv-ticker-change {cls}" aria-hidden="true">{arrow} {abs(pct):.2f}%</div>
   </div>""")
 
-    return '<div class="sbv-ticker-bar">\n' + "\n".join(rows) + "\n</div>"
+    return '<div class="sbv-ticker-bar" role="region" aria-label="실시간 시장 지표">\n' + "\n".join(rows) + "\n</div>"
 
 
 def build_pulse_html(data):
@@ -119,7 +121,7 @@ def build_pulse_html(data):
     items = []
 
     # VIX
-    items.append(f"""    <div class="sbv-pulse-item">
+    items.append(f"""    <div class="sbv-pulse-item" role="group" aria-label="VIX {vix_val:.2f} {vix_label}">
       <div class="sbv-pulse-label">VIX</div>
       <div class="sbv-pulse-val">{vix_val:.2f}</div>
       <div class="sbv-pulse-chg" style="color:{vix_color};">{vix_label}</div>
@@ -127,7 +129,7 @@ def build_pulse_html(data):
 
     # WTI
     wti_pct = wti.get("change_pct", 0)
-    items.append(f"""    <div class="sbv-pulse-item">
+    items.append(f"""    <div class="sbv-pulse-item" role="group" aria-label="WTI 원유 ${wti.get('price', 0):,.2f} {_change_arrow(wti_pct)}{abs(wti_pct):.2f}%">
       <div class="sbv-pulse-label">WTI 원유</div>
       <div class="sbv-pulse-val">${wti.get('price', 0):,.2f}</div>
       <div class="sbv-pulse-chg" style="color:{_pulse_color(wti_pct)};">{_change_arrow(wti_pct)} {abs(wti_pct):.2f}%</div>
@@ -135,7 +137,7 @@ def build_pulse_html(data):
 
     # Gold
     gold_pct = gold.get("change_pct", 0)
-    items.append(f"""    <div class="sbv-pulse-item">
+    items.append(f"""    <div class="sbv-pulse-item" role="group" aria-label="금 ${gold.get('price', 0):,.0f} {_change_arrow(gold_pct)}{abs(gold_pct):.2f}%">
       <div class="sbv-pulse-label">금</div>
       <div class="sbv-pulse-val">${gold.get('price', 0):,.0f}</div>
       <div class="sbv-pulse-chg" style="color:{_pulse_color(gold_pct)};">{_change_arrow(gold_pct)} {abs(gold_pct):.2f}%</div>
@@ -144,7 +146,7 @@ def build_pulse_html(data):
     # US 10Y
     tnx_pct = tnx.get("change_pct", 0)
     tnx_val = tnx.get("price", 0)
-    items.append(f"""    <div class="sbv-pulse-item">
+    items.append(f"""    <div class="sbv-pulse-item" role="group" aria-label="미국 10년 국채 {tnx_val:.2f}% {_change_arrow(tnx_pct)}{abs(tnx_pct):.2f}%">
       <div class="sbv-pulse-label">US 10Y</div>
       <div class="sbv-pulse-val">{tnx_val:.2f}%</div>
       <div class="sbv-pulse-chg" style="color:{_pulse_color(tnx_pct)};">{_change_arrow(tnx_pct)} {abs(tnx_pct):.2f}%</div>
@@ -152,23 +154,23 @@ def build_pulse_html(data):
 
     # Dollar Index
     dxy_pct = dxy.get("change_pct", 0)
-    items.append(f"""    <div class="sbv-pulse-item">
+    items.append(f"""    <div class="sbv-pulse-item" role="group" aria-label="달러인덱스 {dxy.get('price', 0):,.2f} {_change_arrow(dxy_pct)}{abs(dxy_pct):.2f}%">
       <div class="sbv-pulse-label">달러인덱스</div>
       <div class="sbv-pulse-val">{dxy.get('price', 0):,.2f}</div>
       <div class="sbv-pulse-chg" style="color:{_pulse_color(dxy_pct)};">{_change_arrow(dxy_pct)} {abs(dxy_pct):.2f}%</div>
     </div>""")
 
-    # BTC (already in ticker, but pulse shows change detail)
+    # BTC
     btc_pct = btc.get("change_pct", 0)
-    items.append(f"""    <div class="sbv-pulse-item">
+    items.append(f"""    <div class="sbv-pulse-item" role="group" aria-label="비트코인 ${btc.get('price', 0):,.0f} {_change_arrow(btc_pct)}{abs(btc_pct):.2f}%">
       <div class="sbv-pulse-label">비트코인</div>
       <div class="sbv-pulse-val">${btc.get('price', 0):,.0f}</div>
       <div class="sbv-pulse-chg" style="color:{_pulse_color(btc_pct)};">{_change_arrow(btc_pct)} {abs(btc_pct):.2f}%</div>
     </div>""")
 
-    return f"""<div class="sbv-pulse">
+    return f"""<div class="sbv-pulse" role="region" aria-label="Market Pulse - 주요 자산 현황">
   <div class="sbv-pulse-title">
-    <span class="sbv-pulse-dot"></span>
+    <span class="sbv-pulse-dot" aria-hidden="true"></span>
     Market Pulse
   </div>
   <div class="sbv-pulse-grid">
@@ -199,13 +201,21 @@ def update_homepage(data):
     new_ticker = build_ticker_html(data)
     new_pulse = build_pulse_html(data)
 
-    # 티커바 교체: <!-- wp:html --> 블록 내의 sbv-ticker-bar 교체
-    import re
+    # 타임스탬프 업데이트
+    KST = datetime.timezone(datetime.timedelta(hours=9))
+    now_kst = datetime.datetime.now(KST)
+    new_timestamp = now_kst.strftime("%Y.%m.%d %H:%M KST")
+    new_content = re.sub(
+        r'데이터 업데이트: [\d.]+\s+[\d:]+\s+KST',
+        f'데이터 업데이트: {new_timestamp}',
+        content,
+        count=1,
+    )
 
     # 티커바 블록 교체
     ticker_pattern = r'(<!-- wp:html -->\n)<div class="sbv-ticker-bar">.*?</div>\n(<!-- /wp:html -->)'
     ticker_replacement = f'\\1{new_ticker}\n\\2'
-    new_content = re.sub(ticker_pattern, ticker_replacement, content, count=1, flags=re.DOTALL)
+    new_content = re.sub(ticker_pattern, ticker_replacement, new_content, count=1, flags=re.DOTALL)
 
     # Market Pulse 블록 교체 (기존 위치에서)
     pulse_pattern = r'<!-- wp:html -->\n<div class="sbv-pulse">.*?</div>\n<!-- /wp:html -->'

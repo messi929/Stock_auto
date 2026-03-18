@@ -44,23 +44,25 @@ def change_arrow(pct):
 def metric_card(label, value, change_pct, prefix="", suffix=""):
     color = change_color(change_pct)
     arrow = change_arrow(change_pct)
-    return f"""<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:18px 16px;flex:1 1 130px;text-align:center;box-sizing:border-box">
-  <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#8b949e;text-transform:uppercase;margin-bottom:8px">{label}</div>
-  <div style="font-size:18px;font-weight:800;color:#f0f6fc;margin-bottom:4px">{prefix}{value}{suffix}</div>
-  <div style="font-size:13px;font-weight:600;color:{color}">{arrow} {abs(change_pct):.2f}%</div>
+    cls = "up" if change_pct > 0 else "down" if change_pct < 0 else "flat"
+    return f"""<div class="sbv-metric" role="group" aria-label="{label} {prefix}{value}{suffix} {arrow}{abs(change_pct):.2f}%">
+  <div class="sbv-metric-label">{label}</div>
+  <div class="sbv-metric-value">{prefix}{value}{suffix}</div>
+  <div class="sbv-metric-change {cls}" style="color:{color}">{arrow} {abs(change_pct):.2f}%</div>
 </div>"""
 
 
 def bar_chart_row(name, value, change_pct, max_abs_pct=10):
     color = change_color(change_pct)
     arrow = change_arrow(change_pct)
+    cls = "up" if change_pct > 0 else "down" if change_pct < 0 else "flat"
     width = min(abs(change_pct) / max_abs_pct * 100, 100)
-    return f"""<div style="display:flex !important;flex-direction:row !important;align-items:center;gap:12px;margin-bottom:10px">
-  <span style="width:100px;min-width:100px;font-size:13px;font-weight:600;color:#c9d1d9;text-align:right">{name}</span>
-  <div style="flex:1;height:20px;background:#21262d;border-radius:4px;overflow:hidden">
-    <div style="width:{width:.0f}%;height:100%;background:{color};border-radius:4px"></div>
+    return f"""<div class="sbv-bar-row" role="group" aria-label="{name} {arrow}{abs(change_pct):.2f}%">
+  <span class="sbv-bar-name">{name}</span>
+  <div class="sbv-bar-track" aria-hidden="true">
+    <div class="sbv-bar-fill {cls}" style="width:{width:.0f}%;background:{color}"></div>
   </div>
-  <span style="width:80px;min-width:80px;font-size:13px;font-weight:700;color:{color}">{arrow}{abs(change_pct):.2f}%</span>
+  <span class="sbv-bar-pct {cls}" style="color:{color}">{arrow}{abs(change_pct):.2f}%</span>
 </div>"""
 
 
@@ -68,7 +70,7 @@ def analysis_section(title_text, paragraphs):
     """AI 분석 내러티브 섹션 생성"""
     html = f'<div class="sbv-section"><div class="sbv-section-title">{title_text}</div>'
     for p in paragraphs:
-        html += f'<p style="color:#c9d1d9;line-height:1.8;margin:10px 0;font-size:14px">{p}</p>'
+        html += f'<p class="sbv-paragraph">{p}</p>'
     html += '</div>'
     return html
 
@@ -82,6 +84,17 @@ CSS = """<style>
 .sbv-subtitle{font-size:13px;color:#8b949e;letter-spacing:1px}
 .sbv-section{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:24px;margin-bottom:24px}
 .sbv-section-title{font-size:16px;font-weight:700;color:#f0f6fc;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #30363d}
+.sbv-paragraph{color:#c9d1d9;line-height:1.8;margin:10px 0;font-size:14px}
+.sbv-metric{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:18px 16px;flex:1 1 130px;text-align:center}
+.sbv-metric-label{font-size:11px;font-weight:700;letter-spacing:1.5px;color:#8b949e;text-transform:uppercase;margin-bottom:8px}
+.sbv-metric-value{font-size:18px;font-weight:800;color:#f0f6fc;margin-bottom:4px}
+.sbv-metric-change{font-size:13px;font-weight:600}
+.sbv-metrics{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:28px}
+.sbv-bar-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.sbv-bar-name{width:100px;min-width:100px;font-size:13px;font-weight:600;color:#c9d1d9;text-align:right}
+.sbv-bar-track{flex:1;height:20px;background:#21262d;border-radius:4px;overflow:hidden}
+.sbv-bar-fill{height:100%;border-radius:4px}
+.sbv-bar-pct{width:80px;min-width:80px;font-size:13px;font-weight:700}
 .sbv-table{width:100%;border-collapse:collapse;font-size:13px}
 .sbv-table th{background:#161b22;color:#8b949e;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:10px 14px;text-align:left;border-bottom:1px solid #30363d}
 .sbv-table td{padding:10px 14px;border-bottom:1px solid #21262d;color:#c9d1d9}
@@ -200,7 +213,7 @@ def generate_report(data, report_type="post", analysis=None):
 """
 
     # 메트릭 카드
-    html += '<div style="display:flex !important;flex-direction:row !important;flex-wrap:wrap !important;gap:12px;margin-bottom:28px">'
+    html += '<div class="sbv-metrics" role="region" aria-label="주요 시장 지표">'
     if is_pre:
         html += metric_card("S&P 500", fmt_num(sp500.get("price", 0), 2), sp500.get("change_pct", 0))
         html += metric_card("NASDAQ", fmt_num(nasdaq.get("price", 0), 2), nasdaq.get("change_pct", 0))
@@ -254,14 +267,14 @@ def generate_report(data, report_type="post", analysis=None):
     if analysis.get("technical_levels"):
         html += '<div class="sbv-tech"><div class="sbv-tech-title">📊 기술적 분석</div>'
         for p in analysis["technical_levels"]:
-            html += f'<p style="color:#c9d1d9;line-height:1.8;margin:10px 0;font-size:14px">{p}</p>'
+            html += f'<p class="sbv-paragraph">{p}</p>'
         html += '</div>'
 
     # 💰 자금 흐름 (AI 내러티브)
     if analysis.get("money_flow"):
         html += '<div class="sbv-money"><div class="sbv-money-title">💰 자금 흐름 · 수급 분석</div>'
         for p in analysis["money_flow"]:
-            html += f'<p style="color:#c9d1d9;line-height:1.8;margin:10px 0;font-size:14px">{p}</p>'
+            html += f'<p class="sbv-paragraph">{p}</p>'
         html += '</div>'
 
     # 원자재/환율 테이블
@@ -301,7 +314,7 @@ def generate_report(data, report_type="post", analysis=None):
         outlook_title = "오늘 장 전망" if is_pre else "내일 장 전망"
         html += f'<div class="sbv-outlook"><div class="sbv-outlook-title">🔮 {outlook_title}</div>'
         for p in analysis["tomorrow_outlook"]:
-            html += f'<p style="color:#c9d1d9;line-height:1.8;margin:10px 0;font-size:14px">{p}</p>'
+            html += f'<p class="sbv-paragraph">{p}</p>'
         html += '</div>'
 
     html += '<div class="sbv-disclaimer">⚠️ 본 리포트는 투자 참고 자료이며, 투자 판단의 최종 책임은 투자자 본인에게 있습니다. | StockBizView</div>'
