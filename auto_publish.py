@@ -27,7 +27,7 @@ sys.path.insert(0, SCRIPT_DIR)
 from collect_data import collect_all, save_json
 from generate_report import load_data, generate_report, build_data_summary
 from ai_analyst import generate_analysis
-from publish_wp import publish_report
+from publish_wp import publish_report, check_today_published
 from update_homepage import update_homepage
 from market_calendar import collect_all_events, build_calendar_html, update_calendar_page
 
@@ -45,25 +45,6 @@ REPORT_TYPE_MAP = {
 # AI가 생성한 제목 + 날짜만 사용
 
 
-def check_duplicate(report_type, date_str):
-    """오늘 같은 report_type이 이미 발행됐는지 확인"""
-    log_path = os.path.join(SCRIPT_DIR, "publish_log.jsonl")
-    if not os.path.exists(log_path):
-        return None
-    with open(log_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                entry = json.loads(line)
-                if entry.get("report_type") == report_type and entry.get("timestamp", "").startswith(date_str):
-                    return entry
-            except json.JSONDecodeError:
-                continue
-    return None
-
-
 def run(report_type="post_market", status="publish"):
     now = datetime.datetime.now(KST)
     print("=" * 60)
@@ -72,12 +53,13 @@ def run(report_type="post_market", status="publish"):
     print(f"  Time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
-    # 중복 발행 체크
-    today_str = now.strftime("%Y-%m-%d")
-    existing = check_duplicate(report_type, today_str)
+    # WordPress API로 중복 발행 체크
+    print("\n[0/5] 중복 발행 체크 중...")
+    existing = check_today_published(report_type)
     if existing:
-        print(f"\n  ⚠️ 오늘({today_str}) '{report_type}' 리포트가 이미 발행되었습니다.")
+        print(f"\n  ⚠️ 오늘 '{report_type}' 리포트가 이미 발행되었습니다.")
         print(f"  📌 Post ID: {existing.get('post_id')}")
+        print(f"  📝 제목: {existing.get('title')}")
         print(f"  🔗 URL: {existing.get('url')}")
         print(f"  ⏭️ 중복 발행을 건너뜁니다.")
         print("=" * 60)
@@ -112,16 +94,18 @@ def run(report_type="post_market", status="publish"):
     try:
         analysis = generate_analysis(summary, report_type)
     except Exception as e:
-        print(f"  ⚠️ AI 분석 실패, 기본 분석으로 대체: {e}")
-        analysis = {
-            "title": "시장 리포트",
-            "headline": "",
-            "market_overview": [],
-            "sector_analysis": [],
-            "risk_factors": [],
-            "strategy": [],
-            "tomorrow_outlook": [],
-        }
+        print(f"  ❌ AI 분석 실패: {e}")
+        print(f"  🚫 AI 분석 없이는 발행하지 않습니다.")
+        print("=" * 60)
+        return None
+
+    # AI 분석 품질 검증 — 기본 제목이면 실패로 간주
+    if not analysis.get("title") or analysis["title"] == "시장 리포트":
+        print(f"  ❌ AI 분석 품질 미달 (기본 제목 반환)")
+        print(f"  🚫 AI 분석 없이는 발행하지 않습니다.")
+        print("=" * 60)
+        return None
+
     print(f"  제목: {analysis.get('title', 'N/A')}")
     print(f"  헤드라인: {analysis.get('headline', 'N/A')[:60]}...")
 
@@ -151,18 +135,8 @@ def run(report_type="post_market", status="publish"):
         print(f"  📊 Status: {result['status']}")
         print("=" * 60)
 
-        # 로그 저장
-        log_entry = {
-            "timestamp": now.isoformat(),
-            "report_type": report_type,
-            "post_id": result["id"],
-            "url": result["url"],
-            "title": title,
-            "status": result["status"],
-        }
-        log_path = os.path.join(SCRIPT_DIR, "publish_log.jsonl")
-        with open(log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+        # 로그 출력 (WordPress가 단일 소스, 로컬 파일 불필요)
+        print(f"  📋 Report: {report_type} | Post ID: {result['id']}")
 
     return result
 

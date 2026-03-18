@@ -94,6 +94,35 @@ def get_or_create_tags(tag_names):
     return tag_ids
 
 
+def check_today_published(report_type):
+    """오늘 같은 report_type이 이미 WordPress에 발행됐는지 확인"""
+    categories = CATEGORIES.get(report_type, [])
+    if not categories:
+        return None
+
+    now = datetime.datetime.now(KST)
+    # WordPress는 Asia/Seoul 타임존 — 오늘 날짜 범위로 검색
+    today_start = now.strftime("%Y-%m-%dT00:00:00")
+
+    try:
+        cat_param = ",".join(str(c) for c in categories)
+        posts = wp_request(
+            f"posts?categories={cat_param}&after={today_start}"
+            f"&status=publish,draft&per_page=5&orderby=date&order=desc"
+        )
+        if posts:
+            return {
+                "post_id": posts[0]["id"],
+                "title": posts[0]["title"]["rendered"],
+                "url": posts[0]["link"],
+                "date": posts[0]["date"],
+            }
+    except Exception as e:
+        print(f"  ⚠️ WordPress 중복 체크 실패 (계속 진행): {e}")
+
+    return None
+
+
 def purge_cache(report_type=None):
     """Cloudways 캐시 퍼지 (Varnish + Breeze + Cloudways API)"""
     purge_urls = [
