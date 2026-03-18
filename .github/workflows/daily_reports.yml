@@ -3,8 +3,8 @@ name: StockBizView Daily Reports
 on:
   schedule:
     # 모든 시간은 UTC (KST = UTC + 9)
-    # 장전 리포트: KST 07:57 = UTC 22:57 (전날)
-    - cron: '57 22 * * *'
+    # 장전 리포트: KST 06:50 = UTC 21:50 (전날) — 7시 발행 목표
+    - cron: '50 21 * * *'
     # 장후 리포트: KST 19:03 = UTC 10:03
     - cron: '3 10 * * *'
   workflow_dispatch:
@@ -21,7 +21,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
