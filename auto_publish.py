@@ -90,7 +90,7 @@ def run(report_type="post_market", status="publish"):
 
     # Step 3: AI 분석 생성
     print("\n[3/5] AI 애널리스트 분석 생성 중...")
-    summary = build_data_summary(data)
+    summary = build_data_summary(data, report_type)
     try:
         analysis = generate_analysis(summary, report_type)
     except Exception as e:

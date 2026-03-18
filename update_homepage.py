@@ -212,13 +212,13 @@ def update_homepage(data):
         count=1,
     )
 
-    # 티커바 블록 교체
-    ticker_pattern = r'(<!-- wp:html -->\n)<div class="sbv-ticker-bar">.*?</div>\n(<!-- /wp:html -->)'
+    # 티커바 블록 교체 (role 등 추가 속성 허용)
+    ticker_pattern = r'(<!-- wp:html -->\n)<div class="sbv-ticker-bar"[^>]*>.*?</div>\n(<!-- /wp:html -->)'
     ticker_replacement = f'\\1{new_ticker}\n\\2'
     new_content = re.sub(ticker_pattern, ticker_replacement, new_content, count=1, flags=re.DOTALL)
 
-    # Market Pulse 블록 교체 (기존 위치에서)
-    pulse_pattern = r'<!-- wp:html -->\n<div class="sbv-pulse">.*?</div>\n<!-- /wp:html -->'
+    # Market Pulse 블록 교체 (role 등 추가 속성 허용)
+    pulse_pattern = r'<!-- wp:html -->\n<div class="sbv-pulse"[^>]*>.*?</div>\n<!-- /wp:html -->'
     new_pulse_block = f'<!-- wp:html -->\n{new_pulse}\n<!-- /wp:html -->'
 
     if re.search(pulse_pattern, new_content, flags=re.DOTALL):
@@ -226,9 +226,17 @@ def update_homepage(data):
         new_content = re.sub(pulse_pattern, '', new_content, count=1, flags=re.DOTALL)
 
     # 티커바 바로 다음에 Market Pulse 삽입
-    ticker_end = '<!-- /wp:html -->\n\n<!-- wp:html -->\n<div class="sbv-section-header">'
-    pulse_insert = f'<!-- /wp:html -->\n\n{new_pulse_block}\n\n<!-- wp:html -->\n<div class="sbv-section-header">'
-    new_content = new_content.replace(ticker_end, pulse_insert, 1)
+    # 티커바 끝(<!-- /wp:html -->) 다음의 첫 번째 <!-- wp:html --> 블록 앞에 삽입
+    ticker_insert_pattern = r'(<!-- /wp:html -->\n\n+)(<!-- wp:html -->\n<div class="sbv-desk-nav")'
+    if re.search(ticker_insert_pattern, new_content):
+        pulse_insert = f'\\1{new_pulse_block}\n\n\\2'
+        new_content = re.sub(ticker_insert_pattern, pulse_insert, new_content, count=1)
+    else:
+        # fallback: sbv-section-header 앞에 삽입
+        fallback_pattern = r'(<!-- /wp:html -->\n\n+)(<!-- wp:html -->\n<div class="sbv-section-header")'
+        if re.search(fallback_pattern, new_content):
+            pulse_insert = f'\\1{new_pulse_block}\n\n\\2'
+            new_content = re.sub(fallback_pattern, pulse_insert, new_content, count=1)
 
     # 중복 빈 줄 정리
     while '\n\n\n\n' in new_content:

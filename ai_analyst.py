@@ -66,6 +66,7 @@ REPORT_PROMPTS = {
 
 ## 장후 리포트 특화 규칙
 - 오늘 한국 시장(KOSPI/KOSDAQ) 실제 마감 데이터 중심 분석
+- 미국 시장은 아직 개장 전이므로 미국 개별 종목(Mag7 등) 데이터는 제공되지 않음. 전일 미국 시장 영향은 지수 데이터로만 언급
 - 상승/하락 종목의 원인을 섹터 맥락, 수급 구조, 글로벌 peer 비교로 다층 해석
 - 장중 고저점과 종가의 관계에서 수급 강도를 판단
 - 내일 장에 영향을 미칠 글로벌 이벤트 사전 분석
@@ -262,7 +263,7 @@ if __name__ == "__main__":
 
     report_type = sys.argv[1] if len(sys.argv) > 1 else "post_market"
     data = load_data()
-    summary = build_data_summary(data)
+    summary = build_data_summary(data, report_type)
 
     print(f"Generating {report_type} analysis...")
     analysis = generate_analysis(summary, report_type)

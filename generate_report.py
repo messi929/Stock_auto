@@ -120,7 +120,7 @@ CSS = """<style>
 </style>"""
 
 
-def build_data_summary(data):
+def build_data_summary(data, report_type="post_market"):
     """AI 분석 프롬프트용 데이터 요약 텍스트 생성"""
     idx = data["indices"]
     comm = data["commodities"]
@@ -140,9 +140,11 @@ def build_data_summary(data):
     for sym, d in sorted(kr.items(), key=lambda x: x[1].get('change_pct', 0), reverse=True):
         lines.append(f"{d.get('name','')}: {d.get('price',0):,.0f}원 ({d.get('change_pct',0):+.2f}%)")
 
-    lines.append("\n=== 미국 Mag7 ===")
-    for sym, d in sorted(us.items(), key=lambda x: x[1].get('change_pct', 0), reverse=True):
-        lines.append(f"{d.get('name','')}: ${d.get('price',0):,.2f} ({d.get('change_pct',0):+.2f}%)")
+    # 장후 리포트는 미장 미개장이므로 Mag7 제외
+    if report_type != "post_market":
+        lines.append("\n=== 미국 Mag7 ===")
+        for sym, d in sorted(us.items(), key=lambda x: x[1].get('change_pct', 0), reverse=True):
+            lines.append(f"{d.get('name','')}: ${d.get('price',0):,.2f} ({d.get('change_pct',0):+.2f}%)")
 
     return "\n".join(lines)
 
@@ -221,7 +223,6 @@ def generate_report(data, report_type="post", analysis=None):
     else:
         html += metric_card("KOSPI", fmt_num(kospi.get("price", 0), 2), kospi.get("change_pct", 0))
         html += metric_card("KOSDAQ", fmt_num(kosdaq.get("price", 0), 2), kosdaq.get("change_pct", 0))
-        html += metric_card("S&P 500", fmt_num(sp500.get("price", 0), 2), sp500.get("change_pct", 0))
     html += metric_card("USD/KRW", fmt_num(usdkrw.get("price", 0), 0), usdkrw.get("change_pct", 0), suffix="원")
     html += metric_card("WTI", fmt_num(wti.get("price", 0), 2), wti.get("change_pct", 0), prefix="$")
     html += metric_card("VIX", fmt_num(vix.get("price", 0), 1), vix.get("change_pct", 0))
@@ -247,11 +248,12 @@ def generate_report(data, report_type="post", analysis=None):
         html += bar_chart_row("다우존스", dow.get("price", 0), dow.get("change_pct", 0))
         html += '</div>'
 
-    # Mag7
-    html += '<div class="sbv-section"><div class="sbv-section-title">🏢 Magnificent 7</div>'
-    for s in us_sorted:
-        html += bar_chart_row(s.get("name", ""), s.get("price", 0), s.get("change_pct", 0))
-    html += '</div>'
+    # Mag7 (장전 리포트만 — 장후에는 미장 미개장으로 0%)
+    if is_pre:
+        html += '<div class="sbv-section"><div class="sbv-section-title">🏢 Magnificent 7</div>'
+        for s in us_sorted:
+            html += bar_chart_row(s.get("name", ""), s.get("price", 0), s.get("change_pct", 0))
+        html += '</div>'
 
     # 🔍 섹터 분석 (AI 내러티브)
     if analysis.get("sector_analysis"):
