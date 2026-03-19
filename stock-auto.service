@@ -1,0 +1,21 @@
+[Unit]
+Description=StockBizView Report Auto Publisher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/stock-auto
+ExecStart=/opt/stock-auto/venv/bin/python scheduler/stock_runner.py
+Restart=always
+RestartSec=60
+Environment=PYTHONIOENCODING=utf-8
+Environment=TZ=Asia/Seoul
+EnvironmentFile=/opt/stock-auto/.env
+
+StandardOutput=append:/var/log/stock-auto.log
+StandardError=append:/var/log/stock-auto.log
+
+[Install]
+WantedBy=multi-user.target
