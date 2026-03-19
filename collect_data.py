@@ -76,7 +76,16 @@ def fetch_chart(symbol, range_str="5d", interval="1d"):
         price = meta.get("regularMarketPrice", 0)
 
         # 직전 거래일 종가를 daily 데이터에서 직접 추출 (1일 변동률)
+        # Yahoo Finance는 미개장 당일에도 전일 종가를 복사한 bar를 반환하므로
+        # 마지막 bar가 price와 동일하고 직전 bar와도 동일하면 복사본으로 간주하여 제거
         closes = [c for c in quote.get("close", []) if c is not None]
+        if len(closes) >= 3:
+            last = closes[-1]
+            second_last = closes[-2]
+            # 마지막 두 close가 사실상 동일하면 미개장 복사본 → 제거
+            if last and second_last and abs(last - second_last) < 0.01:
+                closes = closes[:-1]
+
         if len(closes) >= 2:
             prev_close = closes[-2]  # 직전 거래일 종가
         else:
