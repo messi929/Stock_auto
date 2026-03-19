@@ -99,12 +99,25 @@ def run(report_type="post_market", status="publish"):
         print("=" * 60)
         return None
 
-    # AI 분석 품질 검증 — 기본 제목이면 실패로 간주
+    # AI 분석 품질 검증
     if not analysis.get("title") or analysis["title"] == "시장 리포트":
         print(f"  ❌ AI 분석 품질 미달 (기본 제목 반환)")
         print(f"  🚫 AI 분석 없이는 발행하지 않습니다.")
         print("=" * 60)
         return None
+
+    # 섹션 완성도 검증 — 최소 4/6 필수 섹션이 있어야 발행
+    from ai_analyst import CRITICAL_SECTIONS
+    filled = sum(1 for k in CRITICAL_SECTIONS if analysis.get(k))
+    min_required = 4
+    if filled < min_required:
+        print(f"  ❌ AI 분석 섹션 부족 ({filled}/{len(CRITICAL_SECTIONS)}, 최소 {min_required}개 필요)")
+        missing = [k for k in CRITICAL_SECTIONS if not analysis.get(k)]
+        print(f"  📋 누락: {missing}")
+        print(f"  🚫 품질 미달로 발행을 중단합니다.")
+        print("=" * 60)
+        return None
+    print(f"  📊 섹션 검증: {filled}/{len(CRITICAL_SECTIONS)} 필수 섹션 통과")
 
     print(f"  제목: {analysis.get('title', 'N/A')}")
     print(f"  헤드라인: {analysis.get('headline', 'N/A')[:60]}...")

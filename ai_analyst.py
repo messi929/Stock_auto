@@ -185,23 +185,106 @@ REPORT_PROMPTS = {
 }
 
 
-def generate_analysis(data_summary, report_type="post_market"):
-    """Claude API로 애널리스트 분석 생성"""
-    system_prompt = REPORT_PROMPTS.get(report_type, REPORT_PROMPTS["post_market"])
+REQUIRED_SECTIONS = [
+    "title", "headline", "executive_summary", "market_overview",
+    "sector_analysis", "technical_levels", "money_flow",
+    "key_numbers", "risk_factors", "strategy", "tomorrow_outlook",
+]
 
-    payload = {
-        "model": MODEL,
-        "max_tokens": 8000,
-        "messages": [
-            {"role": "user", "content": f"## 시장 데이터\n\n{data_summary}\n\n위 데이터를 분석하여 JSON으로 응답하세요. 각 섹션을 최대한 풍부하고 깊이 있게 작성하세요."}
-        ],
-        "system": system_prompt,
-    }
+# 최소 충족 기준: 이 섹션들이 비어있으면 품질 미달
+CRITICAL_SECTIONS = [
+    "executive_summary", "market_overview", "sector_analysis",
+    "technical_levels", "money_flow", "key_numbers",
+]
 
+
+def _call_claude_api(payload):
+    """Claude API 단일 호출 (재시도 포함)"""
     body = json.dumps(payload).encode("utf-8")
 
-    # 최대 2회 재시도 (타임아웃/일시 오류 대비)
-    text = None
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(API_URL, data=body, method="POST")
+            req.add_header("x-api-key", API_KEY)
+            req.add_header("anthropic-version", "2023-06-01")
+            req.add_header("content-type", "application/json")
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+            return result["content"][0]["text"]
+        except Exception as e:
+            print(f"  ⚠️ API 호출 실패 (시도 {attempt+1}/3): {e}")
+            if attempt < 2:
+                import time
+                time.sleep(5)
+
+    return None
+
+
+def _parse_json_response(text):
+    """API 응답 텍스트에서 JSON 추출"""
+    if not text:
+        return None
+
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1]
+        text = text.rsplit("```", 1)[0].strip()
+
+    start = text.find("{")
+    end = text.rfind("}") + 1
+    if start >= 0 and end > start:
+        text = text[start:end]
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        print(f"  ⚠️ JSON 파싱 실패")
+        return None
+
+
+def _find_missing_sections(analysis):
+    """비어있는 필수 섹션 목록 반환"""
+    missing = []
+    for key in CRITICAL_SECTIONS:
+        val = analysis.get(key)
+        if not val or (isinstance(val, list) and len(val) == 0):
+            missing.append(key)
+    return missing
+
+
+def _build_supplement_prompt(missing_sections, data_summary, report_type):
+    """누락된 섹션만 보충 생성하는 프롬프트"""
+    # 원본 프롬프트에서 해당 섹션의 형식 설명 추출
+    original_prompt = REPORT_PROMPTS.get(report_type, REPORT_PROMPTS["post_market"])
+
+    section_descriptions = {
+        "executive_summary": '"executive_summary": ["핵심 포인트 1 (가장 중요한 시장 변화)", "핵심 포인트 2 (투자자 액션 포인트)", "핵심 포인트 3 (리스크/기회 요인)"]',
+        "market_overview": '"market_overview": ["시황 분석 단락1 (4~5문장)", "시황 분석 단락2 (4~5문장)", "시황 분석 단락3 (4~5문장)"]',
+        "sector_analysis": '"sector_analysis": ["섹터 분석 단락1 (4~5문장)", "섹터 분석 단락2 (4~5문장)", "섹터 분석 단락3 (3~4문장)"]',
+        "technical_levels": '"technical_levels": ["KOSPI 기술적 분석 — 지지선/저항선, 이동평균선, 추세 판단 (3~4문장)", "KOSDAQ 기술적 분석 (3~4문장)", "원/달러 기술적 분석 (2~3문장)"]',
+        "money_flow": '"money_flow": ["외국인 자금흐름 전망 (3~4문장)", "기관/개인 수급 예상 (2~3문장)"]',
+        "key_numbers": '"key_numbers": ["오늘의 핵심 숫자 1: 수치 + 의미 해석", "핵심 숫자 2: 수치 + 의미 해석", "핵심 숫자 3: 수치 + 의미 해석"]',
+    }
+
+    fields = ",\n    ".join(section_descriptions.get(s, f'"{s}": ["내용"]') for s in missing_sections)
+
+    return f"""아래 시장 데이터를 바탕으로 누락된 분석 섹션을 보충 작성하세요.
+{COMMON_RULES}
+
+## 시장 데이터
+{data_summary}
+
+## 출력 형식 (JSON)
+반드시 아래 JSON 형식으로만 응답하세요:
+{{
+    {fields}
+}}"""
+
+
+def generate_analysis(data_summary, report_type="post_market"):
+    """Claude API로 애널리스트 분석 생성 (품질 검증 + 보충 재시도)"""
+    system_prompt = REPORT_PROMPTS.get(report_type, REPORT_PROMPTS["post_market"])
+
     default_analysis = {
         "title": "시장 리포트",
         "headline": "",
@@ -216,42 +299,66 @@ def generate_analysis(data_summary, report_type="post_market"):
         "tomorrow_outlook": [],
     }
 
-    for attempt in range(3):
-        try:
-            req = urllib.request.Request(API_URL, data=body, method="POST")
-            req.add_header("x-api-key", API_KEY)
-            req.add_header("anthropic-version", "2023-06-01")
-            req.add_header("content-type", "application/json")
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                result = json.loads(resp.read().decode("utf-8"))
-            text = result["content"][0]["text"]
-            break
-        except Exception as e:
-            print(f"  ⚠️ API 호출 실패 (시도 {attempt+1}/3): {e}")
-            if attempt == 2:
-                print("  ❌ 3회 실패, 기본 분석 반환")
-                return default_analysis
-            import time
-            time.sleep(5)
+    # === 1차 호출: 전체 분석 생성 ===
+    payload = {
+        "model": MODEL,
+        "max_tokens": 12000,
+        "messages": [
+            {"role": "user", "content": f"## 시장 데이터\n\n{data_summary}\n\n위 데이터를 분석하여 JSON으로 응답하세요. 반드시 모든 섹션(executive_summary, market_overview, sector_analysis, technical_levels, money_flow, key_numbers, risk_factors, strategy, tomorrow_outlook)을 빠짐없이 작성하세요. 각 섹션을 최대한 풍부하고 깊이 있게 작성하세요."}
+        ],
+        "system": system_prompt,
+    }
 
-    # JSON 파싱 (코드블록, 앞뒤 텍스트 제거)
-    text = text.strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[1]
-        text = text.rsplit("```", 1)[0].strip()
+    print("  📡 1차 API 호출 중...")
+    text = _call_claude_api(payload)
+    if not text:
+        print("  ❌ API 호출 실패, 기본 분석 반환")
+        return default_analysis
 
-    # { 부터 마지막 } 까지 추출
-    start = text.find("{")
-    end = text.rfind("}") + 1
-    if start >= 0 and end > start:
-        text = text[start:end]
+    analysis = _parse_json_response(text)
+    if not analysis:
+        print("  ❌ JSON 파싱 실패, 기본 분석 반환")
+        return default_analysis
 
-    try:
-        analysis = json.loads(text)
-    except json.JSONDecodeError:
-        # JSON 파싱 실패 시 기본 분석 반환
-        print(f"  ⚠️ JSON 파싱 실패, 기본 분석 사용")
-        analysis = default_analysis
+    # === 2차: 누락 섹션 검증 ===
+    missing = _find_missing_sections(analysis)
+    if not missing:
+        section_count = sum(1 for k in CRITICAL_SECTIONS if analysis.get(k))
+        print(f"  ✅ 분석 품질 검증 통과 ({section_count}/{len(CRITICAL_SECTIONS)} 섹션 완성)")
+        return analysis
+
+    print(f"  ⚠️ 누락 섹션 발견: {missing}")
+    print(f"  📡 보충 API 호출 중...")
+
+    # === 보충 호출: 누락된 섹션만 재생성 ===
+    supplement_prompt = _build_supplement_prompt(missing, data_summary, report_type)
+    supplement_payload = {
+        "model": MODEL,
+        "max_tokens": 6000,
+        "messages": [
+            {"role": "user", "content": supplement_prompt}
+        ],
+        "system": "당신은 세계적 투자 애널리스트입니다. 요청된 섹션을 깊이 있게 작성하세요. JSON으로만 응답하세요.",
+    }
+
+    supplement_text = _call_claude_api(supplement_payload)
+    if supplement_text:
+        supplement = _parse_json_response(supplement_text)
+        if supplement:
+            for key in missing:
+                if supplement.get(key):
+                    analysis[key] = supplement[key]
+                    print(f"    ✅ {key} 보충 완료")
+
+    # === 최종 검증 ===
+    still_missing = _find_missing_sections(analysis)
+    if still_missing:
+        print(f"  ⚠️ 보충 후에도 누락: {still_missing}")
+    else:
+        print(f"  ✅ 모든 섹션 보충 완료")
+
+    section_count = sum(1 for k in CRITICAL_SECTIONS if analysis.get(k))
+    print(f"  📊 최종 품질: {section_count}/{len(CRITICAL_SECTIONS)} 필수 섹션 완성")
 
     return analysis
 
