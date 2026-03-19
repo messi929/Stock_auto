@@ -138,7 +138,9 @@ def run(report_type="post_market", status="publish"):
 
     # Step 5: WordPress 발행
     print(f"\n[5/5] WordPress 발행 중... (status: {status})")
-    result = publish_report(title, html, report_type=report_type, status=status)
+    headline = analysis.get("headline", "")
+    result = publish_report(title, html, report_type=report_type, status=status,
+                            headline=headline, analysis=analysis)
 
     if result:
         print("\n" + "=" * 60)

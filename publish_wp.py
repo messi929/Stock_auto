@@ -5,6 +5,7 @@ StockBizView - WordPress 발행 모듈
 
 import json
 import os
+import re
 import urllib.request
 import urllib.parse
 import base64
@@ -223,7 +224,54 @@ def purge_cache(report_type=None):
     return purged
 
 
-def publish_report(title, html_content, report_type="pre_market", status="draft"):
+def _build_seo_slug(report_type, date_str):
+    """SEO 친화적 짧은 슬러그 생성 (예: pre-market-2026-03-19)"""
+    slug_prefix = {
+        "pre_market": "pre-market",
+        "post_market": "post-market",
+        "us_market": "us-market",
+        "stock_analysis": "stock-analysis",
+        "investment_strategy": "investment-strategy",
+        "korea_market": "korea-market",
+    }
+    prefix = slug_prefix.get(report_type, report_type.replace("_", "-"))
+    return f"{prefix}-{date_str}"
+
+
+def _build_meta_description(report_type, headline, date_str):
+    """Yoast SEO meta description 생성 (120~155자 목표)"""
+    type_label = {
+        "pre_market": "장전 브리핑",
+        "post_market": "장후 리뷰",
+        "us_market": "미국 시장 분석",
+        "stock_analysis": "종목 심층 분석",
+        "investment_strategy": "주간 투자 전략",
+        "korea_market": "한국 시장 심층 분석",
+    }
+    label = type_label.get(report_type, "시장 리포트")
+    # headline에서 핵심 내용 추출 (60자 이내)
+    short_headline = headline[:60] if headline else ""
+    desc = f"[{date_str} {label}] {short_headline} — AI 애널리스트의 데이터 기반 투자 인사이트 | StockBizView"
+    return desc[:160]
+
+
+def _set_yoast_meta(post_id, meta_description, schema_type="NewsArticle"):
+    """발행 후 Yoast SEO 메타 필드 업데이트"""
+    try:
+        # Yoast meta description
+        yoast_data = {
+            "meta": {
+                "_yoast_wpseo_metadesc": meta_description,
+            }
+        }
+        wp_request(f"posts/{post_id}", method="POST", data=yoast_data)
+        print(f"  🔍 SEO meta description 설정 완료")
+    except Exception as e:
+        print(f"  ⚠️ Yoast 메타 설정 실패 (계속 진행): {e}")
+
+
+def publish_report(title, html_content, report_type="pre_market", status="draft",
+                   headline="", analysis=None):
     """WordPress에 리포트 발행"""
     print(f"\n🚀 WordPress 발행 시작...")
     print(f"  제목: {title}")
@@ -238,8 +286,9 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
     print(f"  태그 처리 중: {tag_names}")
     tag_ids = get_or_create_tags(tag_names)
 
-    # SEO excerpt
+    # SEO excerpt (검색 결과 미리보기)
     now = datetime.datetime.now(KST)
+    date_str = now.strftime("%Y.%m.%d")
     excerpt_map = {
         "pre_market": "장전 브리핑 — 오늘 시장을 움직일 글로벌 시그널을 짚어드립니다.",
         "post_market": "장후 리뷰 — 오늘 시장의 승자와 패자, 수급 흐름을 분석합니다.",
@@ -248,13 +297,18 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
         "investment_strategy": "투자 전략 — 자산배분과 포트폴리오 포지셔닝을 안내합니다.",
         "korea_market": "한국 시장 — KOSPI·KOSDAQ 심층 분석과 섹터별 전략을 제공합니다.",
     }
-    excerpt = f"StockBizView {now.strftime('%Y.%m.%d')} {excerpt_map.get(report_type, '시황 리포트 — 주요 지수, 종목, 원자재 동향을 한눈에 확인하세요.')}"
+    excerpt = f"StockBizView {date_str} {excerpt_map.get(report_type, '시황 리포트 — 주요 지수, 종목, 원자재 동향을 한눈에 확인하세요.')}"
+
+    # SEO 슬러그 (짧고 깔끔한 URL)
+    slug = _build_seo_slug(report_type, now.strftime("%Y-%m-%d"))
+    print(f"  🔗 SEO slug: {slug}")
 
     # 포스트 데이터 (date: KST — WordPress timezone이 Asia/Seoul이므로 자동 변환)
     post_data = {
         "title": title,
         "content": html_content,
         "status": status,
+        "slug": slug,
         "date": now.strftime("%Y-%m-%dT%H:%M:%S"),
         "categories": categories,
         "tags": tag_ids,
@@ -273,6 +327,10 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
         print(f"  📂 카테고리: {categories}")
         print(f"  🏷️ 태그: {tag_ids}")
         print(f"  📊 상태: {status}")
+
+        # Yoast SEO 메타 설정
+        meta_desc = _build_meta_description(report_type, headline, date_str)
+        _set_yoast_meta(post_id, meta_desc)
 
         # 캐시 퍼지 (카테고리 페이지 갱신)
         purge_cache(report_type)

@@ -320,6 +320,21 @@ def generate_report(data, report_type="post", analysis=None):
         html += '</div>'
 
     html += '<div class="sbv-disclaimer">⚠️ 본 리포트는 투자 참고 자료이며, 투자 판단의 최종 책임은 투자자 본인에게 있습니다. | StockBizView</div>'
+
+    # SEO: Yoast가 wordCount를 정확히 계산할 수 있도록 plain text 블록 추가
+    # (화면에는 보이지 않지만 크롤러/Yoast 파서가 읽을 수 있음)
+    seo_sections = ["executive_summary", "market_overview", "sector_analysis",
+                    "technical_levels", "money_flow", "key_numbers",
+                    "risk_factors", "strategy", "tomorrow_outlook"]
+    plain_parts = []
+    for key in seo_sections:
+        items = analysis.get(key, [])
+        if isinstance(items, list):
+            plain_parts.extend(items)
+    if plain_parts:
+        plain_text = " ".join(plain_parts)
+        html += f'<div class="sbv-seo-text" style="position:absolute;left:-9999px;height:1px;overflow:hidden" aria-hidden="true">{plain_text}</div>'
+
     html += '</div>'  # close sbv-wrap
 
     # 제목 생성 (카테고리 태그 없이 AI 제목 + 날짜)
