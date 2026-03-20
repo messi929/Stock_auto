@@ -240,31 +240,67 @@ def _build_seo_slug(report_type, date_str):
 
 def _build_meta_description(report_type, headline, date_str):
     """Yoast SEO meta description 생성 (120~155자 목표)"""
-    type_label = {
-        "pre_market": "장전 브리핑",
-        "post_market": "장후 리뷰",
-        "us_market": "미국 시장 분석",
-        "stock_analysis": "종목 심층 분석",
-        "investment_strategy": "주간 투자 전략",
-        "korea_market": "한국 시장 심층 분석",
+    # date_str: "2026.03.20" → "3월 20일"
+    try:
+        parts = date_str.split(".")
+        date_kr = f"{int(parts[1])}월 {int(parts[2])}일"
+    except (IndexError, ValueError):
+        date_kr = date_str
+
+    type_desc = {
+        "pre_market": "증시 전망 장전 분석",
+        "post_market": "코스피 마감 장후 분석",
+        "us_market": "미국 증시 나스닥 S&P500 분석",
+        "stock_analysis": "주식 종목 분석 주가 전망",
+        "investment_strategy": "투자 전략 포트폴리오 가이드",
+        "korea_market": "코스피 코스닥 심층 분석",
     }
-    label = type_label.get(report_type, "시장 리포트")
-    # headline에서 핵심 내용 추출 (60자 이내)
-    short_headline = headline[:60] if headline else ""
-    desc = f"[{date_str} {label}] {short_headline} — AI 애널리스트의 데이터 기반 투자 인사이트 | StockBizView"
+    label = type_desc.get(report_type, "증시 분석")
+    short_headline = headline[:55] if headline else ""
+    desc = f"{date_kr} {label}. {short_headline}. AI 기반 무료 증시 리포트 | StockBizView"
     return desc[:160]
 
 
-def _set_yoast_meta(post_id, meta_description, schema_type="NewsArticle"):
+def _build_seo_title(report_type, analysis):
+    """구글 검색 최적화 제목 생성 (Yoast SEO title)"""
+    seo_title = (analysis or {}).get("seo_title", "")
+    if seo_title:
+        # AI가 생성한 SEO 제목 사용 (60자 제한 + 브랜드)
+        seo_title = seo_title.strip()
+        if "StockBizView" not in seo_title:
+            full = f"{seo_title} - StockBizView"
+        else:
+            full = seo_title
+        return full[:60]
+
+    # 폴백: AI가 seo_title을 생성하지 못한 경우 템플릿 사용
+    now = datetime.datetime.now(KST)
+    mm = now.month
+    dd = now.day
+    date_kr = f"{mm}월 {dd}일"
+    fallback = {
+        "pre_market": f"{date_kr} 증시 전망 | 코스피 장전 분석 - StockBizView",
+        "post_market": f"{date_kr} 코스피 마감 | 증시 장후 분석 - StockBizView",
+        "us_market": f"{date_kr} 미국 증시 | 나스닥·S&P500 분석 - StockBizView",
+        "stock_analysis": f"{date_kr} 종목 분석 | 주가 전망 - StockBizView",
+        "investment_strategy": f"{mm}월 투자 전략 | 포트폴리오 가이드 - StockBizView",
+        "korea_market": f"{date_kr} 코스피·코스닥 분석 | 섹터 전략 - StockBizView",
+    }
+    return fallback.get(report_type, f"{date_kr} 증시 분석 - StockBizView")[:60]
+
+
+def _set_yoast_meta(post_id, meta_description, seo_title="",
+                    schema_type="NewsArticle"):
     """발행 후 Yoast SEO 메타 필드 업데이트"""
     try:
-        # Yoast meta description
-        yoast_data = {
-            "meta": {
-                "_yoast_wpseo_metadesc": meta_description,
-            }
+        meta_fields = {
+            "_yoast_wpseo_metadesc": meta_description,
         }
+        if seo_title:
+            meta_fields["_yoast_wpseo_title"] = seo_title
+        yoast_data = {"meta": meta_fields}
         wp_request(f"posts/{post_id}", method="POST", data=yoast_data)
+        print(f"  🔍 SEO title: {seo_title}")
         print(f"  🔍 SEO meta description 설정 완료")
     except Exception as e:
         print(f"  ⚠️ Yoast 메타 설정 실패 (계속 진행): {e}")
@@ -328,9 +364,10 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
         print(f"  🏷️ 태그: {tag_ids}")
         print(f"  📊 상태: {status}")
 
-        # Yoast SEO 메타 설정
+        # Yoast SEO 메타 설정 (구글 검색 제목 + 설명)
         meta_desc = _build_meta_description(report_type, headline, date_str)
-        _set_yoast_meta(post_id, meta_desc)
+        seo_title = _build_seo_title(report_type, analysis)
+        _set_yoast_meta(post_id, meta_desc, seo_title=seo_title)
 
         # 캐시 퍼지 (카테고리 페이지 갱신)
         purge_cache(report_type)
