@@ -302,7 +302,7 @@ CRITICAL_SECTIONS = [
 ]
 
 
-def _call_claude_api(payload):
+def _call_claude_api(payload, timeout=300):
     """Claude API 단일 호출 (재시도 포함)"""
     body = json.dumps(payload).encode("utf-8")
 
@@ -312,7 +312,7 @@ def _call_claude_api(payload):
             req.add_header("x-api-key", API_KEY)
             req.add_header("anthropic-version", "2023-06-01")
             req.add_header("content-type", "application/json")
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
                 result = json.loads(resp.read().decode("utf-8"))
             return result["content"][0]["text"]
         except Exception as e:
@@ -421,8 +421,9 @@ def generate_analysis(data_summary, report_type="post_market"):
         "system": system_prompt,
     }
 
-    print("  📡 1차 API 호출 중...")
-    text = _call_claude_api(payload)
+    api_timeout = 600 if is_weekly else 300
+    print(f"  📡 1차 API 호출 중... (max_tokens: {max_tokens}, timeout: {api_timeout}s)")
+    text = _call_claude_api(payload, timeout=api_timeout)
     if not text:
         print("  ❌ API 호출 실패, 기본 분석 반환")
         return default_analysis
