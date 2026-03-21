@@ -99,9 +99,9 @@ def task_if_day(days, report_type):
 def setup_schedule():
     """모든 스케줄 등록"""
 
-    # 매일 리포트
-    schedule.every().day.at("06:50").do(task_publish_report, "pre_market")
-    schedule.every().day.at("19:03").do(task_publish_report, "post_market")
+    # 매일 리포트 (월~금)
+    schedule.every().day.at("06:50").do(task_if_day, [0, 1, 2, 3, 4], "pre_market")
+    schedule.every().day.at("19:03").do(task_if_day, [0, 1, 2, 3, 4], "post_market")
 
     # 주간 리포트 (요일 체크 포함)
     schedule.every().day.at("09:13").do(task_if_day, [1, 4], "us_market")       # 화/금
@@ -109,16 +109,22 @@ def setup_schedule():
     schedule.every().day.at("09:07").do(task_if_day, [2], "investment_strategy") # 수
     schedule.every().day.at("19:33").do(task_if_day, [0, 3], "korea_market")    # 월/목
 
+    # 주말 주간 리뷰
+    schedule.every().day.at("10:00").do(task_if_day, [5], "weekly_recap_kr")    # 토요일
+    schedule.every().day.at("10:00").do(task_if_day, [6], "weekly_recap_us")    # 일요일
+
     # 홈페이지 데이터 업데이트 (30분마다)
     schedule.every(30).minutes.do(task_update_homepage)
 
     log("📋 스케줄 등록 완료:")
-    log("  매일   06:50  장전 리포트")
-    log("  매일   19:03  장후 리포트")
+    log("  월~금  06:50  장전 리포트")
+    log("  월~금  19:03  장후 리포트")
     log("  화/금  09:13  미국 시장")
     log("  화/금  19:47  종목 분석")
     log("  수     09:07  투자 전략")
     log("  월/목  19:33  한국 시장")
+    log("  토     10:00  한국 시장 주간 리뷰")
+    log("  일     10:00  미국 시장 주간 리뷰")
     log("  30분마다      홈페이지 업데이트")
 
 

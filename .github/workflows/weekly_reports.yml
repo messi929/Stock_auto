@@ -10,6 +10,10 @@ on:
     - cron: '7 0 * * 3'
     # 한국 시장 (월/목 KST 19:33 = UTC 10:33)
     - cron: '33 10 * * 1,4'
+    # 주간 리뷰: 한국 시장 (토 KST 10:00 = UTC 01:00)
+    - cron: '0 1 * * 6'
+    # 주간 리뷰: 미국 시장 (일 KST 10:00 = UTC 01:00)
+    - cron: '0 1 * * 0'
   workflow_dispatch:
     inputs:
       report_type:
@@ -22,6 +26,8 @@ on:
           - stock_analysis
           - investment_strategy
           - korea_market
+          - weekly_recap_kr
+          - weekly_recap_us
 
 concurrency:
   group: weekly-reports
@@ -48,7 +54,13 @@ jobs:
             HOUR=$(TZ=Asia/Seoul date +%H)
             DOW=$(TZ=Asia/Seoul date +%u)
             # 월=1,화=2,수=3,목=4,금=5
-            if [ "$HOUR" -lt 12 ]; then
+            if [ "$DOW" = "6" ]; then
+              # 토요일: 한국 시장 주간 리뷰
+              echo "type=weekly_recap_kr" >> $GITHUB_OUTPUT
+            elif [ "$DOW" = "7" ]; then
+              # 일요일: 미국 시장 주간 리뷰
+              echo "type=weekly_recap_us" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" -lt 12 ]; then
               # 오전: 미국시장(화/금) 또는 투자전략(수)
               if [ "$DOW" = "3" ]; then
                 echo "type=investment_strategy" >> $GITHUB_OUTPUT

@@ -39,6 +39,8 @@ REPORT_TYPE_MAP = {
     "stock_analysis": "post",  # 종목 분석은 장후 레이아웃
     "investment_strategy": "pre",
     "korea_market": "post",
+    "weekly_recap_kr": "weekly_kr",   # 주말 한국 시장 주간 리뷰
+    "weekly_recap_us": "weekly_us",   # 주말 미국 시장 주간 리뷰
 }
 
 # 제목에 카테고리 태그 불필요 (카테고리는 WordPress에서 자동 표시)

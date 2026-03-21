@@ -3,10 +3,10 @@ name: StockBizView Daily Reports
 on:
   schedule:
     # 모든 시간은 UTC (KST = UTC + 9)
-    # 장전 리포트: KST 06:50 = UTC 21:50 (전날) — 7시 발행 목표
-    - cron: '50 21 * * *'
-    # 장후 리포트: KST 19:03 = UTC 10:03
-    - cron: '3 10 * * *'
+    # 장전 리포트: KST 06:50 = UTC 21:50 (전날) — 월~금만 (일~목 UTC)
+    - cron: '50 21 * * 0-4'
+    # 장후 리포트: KST 19:03 = UTC 10:03 — 월~금만
+    - cron: '3 10 * * 1-5'
   workflow_dispatch:
     inputs:
       report_type:

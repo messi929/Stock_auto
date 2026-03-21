@@ -31,6 +31,8 @@ CATEGORIES = {
     "us_market": [7],           # 미국 시장
     "stock_analysis": [4],      # 종목 분석
     "investment_strategy": [5], # 투자 전략
+    "weekly_recap_kr": [6],     # 한국 시장 주간 리뷰 → 한국 시장 카테고리
+    "weekly_recap_us": [7],     # 미국 시장 주간 리뷰 → 미국 시장 카테고리
 }
 
 # SEO 태그
@@ -41,6 +43,8 @@ TAGS_MAP = {
     "us_market": ["미국시장", "나스닥", "S&P500", "Mag7", "월가", "StockBizView"],
     "stock_analysis": ["종목분석", "주식분석", "기업분석", "투자아이디어", "StockBizView"],
     "investment_strategy": ["투자전략", "포트폴리오", "자산배분", "리스크관리", "StockBizView"],
+    "weekly_recap_kr": ["주간리뷰", "코스피", "코스닥", "주간시황", "한국증시", "StockBizView"],
+    "weekly_recap_us": ["주간리뷰", "미국증시", "나스닥", "S&P500", "Mag7", "월가", "StockBizView"],
 }
 
 
@@ -233,6 +237,8 @@ def _build_seo_slug(report_type, date_str):
         "stock_analysis": "stock-analysis",
         "investment_strategy": "investment-strategy",
         "korea_market": "korea-market",
+        "weekly_recap_kr": "weekly-kr",
+        "weekly_recap_us": "weekly-us",
     }
     prefix = slug_prefix.get(report_type, report_type.replace("_", "-"))
     return f"{prefix}-{date_str}"
@@ -254,6 +260,8 @@ def _build_meta_description(report_type, headline, date_str):
         "stock_analysis": "주식 종목 분석 주가 전망",
         "investment_strategy": "투자 전략 포트폴리오 가이드",
         "korea_market": "코스피 코스닥 심층 분석",
+        "weekly_recap_kr": "코스피 코스닥 주간 리뷰 시황 분석",
+        "weekly_recap_us": "미국 증시 나스닥 S&P500 주간 리뷰",
     }
     label = type_desc.get(report_type, "증시 분석")
     short_headline = headline[:55] if headline else ""
@@ -278,6 +286,9 @@ def _build_seo_title(report_type, analysis):
     mm = now.month
     dd = now.day
     date_kr = f"{mm}월 {dd}일"
+    # 주차 계산
+    import math
+    week_num = math.ceil(dd / 7)
     fallback = {
         "pre_market": f"{date_kr} 증시 전망 | 코스피 장전 분석 - StockBizView",
         "post_market": f"{date_kr} 코스피 마감 | 증시 장후 분석 - StockBizView",
@@ -285,6 +296,8 @@ def _build_seo_title(report_type, analysis):
         "stock_analysis": f"{date_kr} 종목 분석 | 주가 전망 - StockBizView",
         "investment_strategy": f"{mm}월 투자 전략 | 포트폴리오 가이드 - StockBizView",
         "korea_market": f"{date_kr} 코스피·코스닥 분석 | 섹터 전략 - StockBizView",
+        "weekly_recap_kr": f"{mm}월 {week_num}주차 코스피 주간 리뷰 | 시황 분석 - StockBizView",
+        "weekly_recap_us": f"{mm}월 {week_num}주차 미국 증시 주간 리뷰 | 나스닥·S&P500 - StockBizView",
     }
     return fallback.get(report_type, f"{date_kr} 증시 분석 - StockBizView")[:60]
 
@@ -332,6 +345,8 @@ def publish_report(title, html_content, report_type="pre_market", status="draft"
         "stock_analysis": "종목 분석 — 주목할 종목의 밸류에이션과 투자 전략을 제시합니다.",
         "investment_strategy": "투자 전략 — 자산배분과 포트폴리오 포지셔닝을 안내합니다.",
         "korea_market": "한국 시장 — KOSPI·KOSDAQ 심층 분석과 섹터별 전략을 제공합니다.",
+        "weekly_recap_kr": "한국 시장 주간 리뷰 — 한 주간 KOSPI·KOSDAQ 흐름과 수급, 다음 주 전략을 종합 분석합니다.",
+        "weekly_recap_us": "미국 시장 주간 리뷰 — 한 주간 S&P500·나스닥 흐름, Mag7 성과, 다음 주 전략을 종합 분석합니다.",
     }
     excerpt = f"StockBizView {date_str} {excerpt_map.get(report_type, '시황 리포트 — 주요 지수, 종목, 원자재 동향을 한눈에 확인하세요.')}"
 
