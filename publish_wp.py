@@ -31,8 +31,8 @@ CATEGORIES = {
     "us_market": [7],           # 미국 시장
     "stock_analysis": [4],      # 종목 분석
     "investment_strategy": [5], # 투자 전략
-    "weekly_recap_kr": [6],     # 한국 시장 주간 리뷰 → 한국 시장 카테고리
-    "weekly_recap_us": [7],     # 미국 시장 주간 리뷰 → 미국 시장 카테고리
+    "weekly_recap_kr": [62],    # 주간 리뷰
+    "weekly_recap_us": [62],    # 주간 리뷰
 }
 
 # SEO 태그
@@ -140,6 +140,7 @@ def purge_cache(report_type=None):
         f"{WP_URL}/category/stock-analysis/",
         f"{WP_URL}/category/investment-strategy/",
         f"{WP_URL}/category/daily-report/",
+        f"{WP_URL}/category/weekly-review/",
     ]
 
     purged = 0
