@@ -325,24 +325,82 @@ def _call_claude_api(payload, timeout=300):
 
 
 def _parse_json_response(text):
-    """API 응답 텍스트에서 JSON 추출"""
+    """API 응답 텍스트에서 JSON 추출 (강건한 파싱)"""
     if not text:
         return None
 
+    import re
+
     text = text.strip()
+
+    # 1단계: 마크다운 코드펜스 제거 (```json ... ``` 또는 ``` ... ```)
     if text.startswith("```"):
-        text = text.split("\n", 1)[1]
+        text = text.split("\n", 1)[1] if "\n" in text else text[3:]
         text = text.rsplit("```", 1)[0].strip()
 
+    # 2단계: JSON 객체 추출 ({...} 범위)
     start = text.find("{")
     end = text.rfind("}") + 1
-    if start >= 0 and end > start:
-        text = text[start:end]
+    if start < 0 or end <= start:
+        print(f"  ⚠️ JSON 파싱 실패: 응답에 JSON 객체 없음 (길이: {len(text)})")
+        return None
+    text = text[start:end]
 
+    # 3단계: 직접 파싱 시도
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        print(f"  ⚠️ JSON 파싱 실패")
+        pass
+
+    # 4단계: 제어문자 정리 후 재시도
+    # JSON 문자열 값 내의 제어문자(\x00-\x1f 중 \n, \r, \t 제외)를 공백으로 치환
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', text)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # 5단계: 후행 쉼표 제거 후 재시도 (,] 또는 ,} 패턴)
+    cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # 6단계: 이스케이프되지 않은 줄바꿈을 \\n으로 치환 후 재시도
+    # JSON 문자열 내부의 실제 줄바꿈을 이스케이프 처리
+    def escape_newlines_in_strings(s):
+        result = []
+        in_string = False
+        escape = False
+        for ch in s:
+            if escape:
+                result.append(ch)
+                escape = False
+                continue
+            if ch == '\\' and in_string:
+                result.append(ch)
+                escape = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+            if in_string and ch == '\n':
+                result.append('\\n')
+                continue
+            if in_string and ch == '\r':
+                continue
+            result.append(ch)
+        return ''.join(result)
+
+    escaped = escape_newlines_in_strings(cleaned)
+    try:
+        return json.loads(escaped)
+    except json.JSONDecodeError as e:
+        # 최종 실패 — 에러 위치 로깅
+        pos = e.pos if hasattr(e, 'pos') else -1
+        context = escaped[max(0, pos - 80):pos + 80] if pos >= 0 else escaped[:200]
+        print(f"  ⚠️ JSON 파싱 실패: {e.msg} (위치: {pos})")
+        print(f"  📍 에러 주변: ...{repr(context)}...")
         return None
 
 

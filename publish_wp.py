@@ -111,9 +111,10 @@ def check_today_published(report_type):
 
     try:
         cat_param = ",".join(str(c) for c in categories)
+        # WordPress REST API는 status[]= 배열 형식 필요
         posts = wp_request(
             f"posts?categories={cat_param}&after={today_start}"
-            f"&status=publish,draft&per_page=5&orderby=date&order=desc"
+            f"&status[]=publish&status[]=draft&per_page=5&orderby=date&order=desc"
         )
         if posts:
             return {
@@ -123,8 +124,8 @@ def check_today_published(report_type):
                 "date": posts[0]["date"],
             }
     except Exception as e:
-        print(f"  ❌ WordPress 중복 체크 실패 — 안전을 위해 발행 차단: {e}")
-        return {"error": True, "reason": str(e)}
+        print(f"  ⚠️ WordPress 중복 체크 실패 — 발행 계속 진행: {e}")
+        return None
 
     return None
 

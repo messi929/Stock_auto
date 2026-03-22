@@ -55,7 +55,10 @@ def run_task(task_name, func, *args):
     log(f"▶ {task_name} 시작")
     try:
         result = func(*args)
-        log(f"✅ {task_name} 완료")
+        if result is None and "리포트 발행" in task_name:
+            log(f"⚠️ {task_name} 발행 실패 (품질 미달 또는 API 에러)")
+        else:
+            log(f"✅ {task_name} 완료")
         return result
     except Exception as e:
         log(f"❌ {task_name} 실패: {e}")
